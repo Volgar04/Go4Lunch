@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#EBDC70</color>
-    <color name="colorPrimaryDark">#EBDC70</color>
+    <color name="colorPrimary">#E8CA5D</color>
+    <color name="colorPrimaryDark">#E8CA5D</color>
     <color name="colorAccent">#D81B60</color>
 
     <array name="colorPagesViewPager">
