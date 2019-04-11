@@ -11,6 +11,7 @@ import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.nicolappli.go4lunch.Controllers.Activities.MainActivity;
 
 import java.util.Arrays;
 import java.util.List;
