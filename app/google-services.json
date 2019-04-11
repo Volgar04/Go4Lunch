@@ -21,6 +21,10 @@
             "package_name": "com.nicolappli.go4lunch",
             "certificate_hash": "b810b878114fb6054257130909c68ee24e3d92a4"
           }
+        },
+        {
+          "client_id": "972095858267-6lvbkau2m8unlb3fp830uod11fgvic3q.apps.googleusercontent.com",
+          "client_type": 3
         }
       ],
       "api_key": [
