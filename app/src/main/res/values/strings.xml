@@ -5,4 +5,5 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="maps_api_key">AIzaSyBt0QsJpE5plpkqOMYTFQrI3Ilw2VkvX9A</string>
 </resources>
