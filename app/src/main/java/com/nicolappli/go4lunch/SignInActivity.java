@@ -35,6 +35,11 @@ public class SignInActivity extends AppCompatActivity {
         setContentView(R.layout.activity_sign_in);
         ButterKnife.bind(this);
 
+        if(FirebaseAuth.getInstance().getCurrentUser()!=null){
+            Intent mainActivity = new Intent(SignInActivity.this, MainActivity.class);
+            startActivity(mainActivity);
+        }
+
     }
 
     public void createSignInIntent() {
