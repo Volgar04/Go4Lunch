@@ -11,5 +11,4 @@
     app:titleTextAppearance="@style/Toolbar.TitleText">
 
 
-
 </android.support.v7.widget.Toolbar>

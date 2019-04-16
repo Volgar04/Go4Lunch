@@ -18,8 +18,10 @@ import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.firebase.ui.auth.AuthUI;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.nicolappli.go4lunch.Adapters.PageAdapter;
 import com.nicolappli.go4lunch.R;
 
@@ -33,6 +35,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     //for data
     private static final String TAG = "MainActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
+    public static final int SIGN_OUT_TASK = 83;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                 break;
             case R.id.activity_main_drawer_logout:
-
+                signOut();
                 break;
             default:
                 break;
@@ -171,5 +174,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Toast.makeText(this, "You can't make map request", Toast.LENGTH_SHORT).show();
         }
         return false;
+    }
+
+    private void signOut(){
+        AuthUI.getInstance().signOut(this).addOnSuccessListener(this, updateUiAfterHttpRequest(SIGN_OUT_TASK));
+    }
+
+    private OnSuccessListener<Void> updateUiAfterHttpRequest(final int task){
+        return  aVoid -> {
+            switch (task){
+                case SIGN_OUT_TASK:
+                    finish();
+                    break;
+                default:
+                    break;
+            }
+        };
     }
 }
