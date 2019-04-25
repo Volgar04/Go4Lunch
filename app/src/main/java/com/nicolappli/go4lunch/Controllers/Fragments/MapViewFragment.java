@@ -3,6 +3,8 @@ package com.nicolappli.go4lunch.Controllers.Fragments;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -14,7 +16,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
-
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -22,10 +23,19 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Task;
 import com.nicolappli.go4lunch.R;
+import com.nicolappli.go4lunch.Utils.RefreshEvent;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 
@@ -46,6 +56,7 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
     public Boolean mLocationPermissionGranted = false;
     public GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
+    private SupportMapFragment mapFragment;
 
     public MapViewFragment() {
     }
@@ -68,24 +79,23 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
     private void getDeviceLocation() {
         Log.d(TAG, "getDeviceLocation: getting the devices current location");
 
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(getActivity());
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(Objects.requireNonNull(getActivity()));
 
         try {
             if (mLocationPermissionGranted) {
                 Task location = mFusedLocationProviderClient.getLastLocation();
-                location.addOnCompleteListener(new OnCompleteListener() {
-                    @Override
-                    public void onComplete(@NonNull Task task) {
-                        if (task.isSuccessful()) {
-                            Log.d(TAG, "onComplete: found location!");
-                            Location currentLocation = (Location) task.getResult();
+                location.addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Log.d(TAG, "onComplete: found location!");
+                        Location currentLocation = (Location) task.getResult();
 
+                        if (currentLocation != null) {
                             moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()),
-                                    DEFAULT_ZOOM);
-                        } else {
-                            Log.d(TAG, "onComplete: current location is null");
-                            Toast.makeText(getActivity(), "Unable to get current location.", Toast.LENGTH_SHORT).show();
+                                    DEFAULT_ZOOM, "My Location");
                         }
+                    } else {
+                        Log.d(TAG, "onComplete: current location is null");
+                        Toast.makeText(getActivity(), "Unable to get current location.", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -94,17 +104,49 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    private void moveCamera(LatLng latLng, float zoom) {
+    private void moveCamera(LatLng latLng, float zoom, String title) {
         Log.d(TAG, "moveCamera: moving the camera to lat: " + latLng.latitude + ", lng: " + latLng.longitude);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom));
+
+        if (!title.equals("My Location")){
+            MarkerOptions options = new MarkerOptions()
+                    .position(latLng)
+                    .title(title);
+            mMap.addMarker(options);
+        }
     }
 
     private void initMap() {
         Log.d(TAG, "initMap: initializing map");
-        assert getFragmentManager() != null;
-        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
-        assert mapFragment != null;
-        mapFragment.getMapAsync(MapViewFragment.this);
+
+        //assert mapFragment != null;
+        if(mapFragment==null){
+            mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
+            if (mapFragment != null) {
+                mapFragment.getMapAsync(MapViewFragment.this);
+            }
+            Log.d(TAG, "initMap: null");
+        }
+    }
+
+    private void geoLocate(String query){
+        Log.d(TAG, "geoLocate: geolocating");
+
+        Geocoder geocoder = new Geocoder(getActivity());
+        List<Address> list = new ArrayList<>();
+        try{
+            list = geocoder.getFromLocationName(query, 1);
+        }catch (IOException e){
+            Log.e(TAG, "geoLocate: IOException: " + e.getMessage());
+        }
+
+        if(list.size() > 0 ){
+            Address address = list.get(0);
+            //Toast.makeText(getActivity(), address.toString(), Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "geoLocate: found a location: " + address.toString());
+
+            this.moveCamera(new LatLng(address.getLatitude(), address.getLongitude()), DEFAULT_ZOOM, address.getAddressLine(0));
+        }
     }
 
     private void getLocationPermission() {
@@ -136,8 +178,8 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
         switch (requestCode) {
             case LOCATION_PERMISSION_REQUEST_CODE: {
                 if (grantResults.length > 0) {
-                    for (int i = 0; i < grantResults.length; i++) {
-                        if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    for (int grantResult : grantResults) {
+                        if (grantResult != PackageManager.PERMISSION_GRANTED) {
                             mLocationPermissionGranted = false;
                             Log.d(TAG, "onRequestPermissionsResult: permission failed");
                             return;
@@ -168,5 +210,22 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(false);
         }
+    }
+
+    @Subscribe
+    public void onEvent(RefreshEvent event){
+        this.geoLocate(event.getQuery());
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        EventBus.getDefault().unregister(this);
     }
 }

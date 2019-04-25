@@ -34,17 +34,13 @@ public class SignInActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_in);
         ButterKnife.bind(this);
-
-        if(FirebaseAuth.getInstance().getCurrentUser()!=null){
-            Intent mainActivity = new Intent(SignInActivity.this, MainActivity.class);
-            startActivity(mainActivity);
-        }
-
+        createSignInIntent();
     }
 
     public void createSignInIntent() {
         List<AuthUI.IdpConfig> providers = Arrays.asList(
-                new AuthUI.IdpConfig.GoogleBuilder().build());
+                new AuthUI.IdpConfig.GoogleBuilder().build(),
+                new AuthUI.IdpConfig.FacebookBuilder().build());
 
         // Create and launch sign-in intent
         startActivityForResult(
@@ -85,10 +81,5 @@ public class SignInActivity extends AppCompatActivity {
     // 2 - Show Snack Bar with a message
     private void showSnackBar(CoordinatorLayout coordinatorLayout, String message) {
         Snackbar.make(coordinatorLayout, message, Snackbar.LENGTH_SHORT).show();
-    }
-
-    @OnClick(R.id.activity_sign_in_btn)
-    public void onViewClicked() {
-        this.createSignInIntent();
     }
 }
