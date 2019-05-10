@@ -13,38 +13,51 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 import android.widget.Toast;
-
 import com.firebase.ui.auth.AuthUI;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.AutocompletePrediction;
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken;
+import com.google.android.libraries.places.api.model.RectangularBounds;
+import com.google.android.libraries.places.api.model.TypeFilter;
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
+import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.firebase.auth.FirebaseAuth;
 import com.nicolappli.go4lunch.Adapters.PageAdapter;
 import com.nicolappli.go4lunch.R;
 import com.nicolappli.go4lunch.SignInActivity;
 import com.nicolappli.go4lunch.Utils.RefreshEvent;
-
 import org.greenrobot.eventbus.EventBus;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, GoogleApiClient.OnConnectionFailedListener {
 
     @BindView(R.id.input_search)
-    EditText mInputSearch;
+    AutoCompleteTextView mInputSearch;
     //for design
     private Toolbar mToolbar;
     private DrawerLayout mDrawerLayout;
@@ -54,6 +67,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String TAG = "MainActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
     public static final int SIGN_OUT_TASK = 83;
+    private PlacesClient mPlacesClient;
+    private ArrayList<String> predictionsArray = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,21 +77,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ButterKnife.bind(this);
 
         mRelativeLayoutSearch = findViewById(R.id.relative_layout_search);
+        String apiKey = getString(R.string.api_key);
 
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
             Intent mainActivity = new Intent(MainActivity.this, SignInActivity.class);
             startActivity(mainActivity);
         }
 
+        if (!Places.isInitialized()) {
+            Places.initialize(getApplicationContext(), apiKey);
+        }
+        mPlacesClient = Places.createClient(this);
+
         this.configureViewPagerAndTabs();
         this.configureToolbar();
         this.configureDrawerLayout();
         this.configureNavigationView();
         this.init();
-
-        if (this.isServicesOK()) {
-
-        }
     }
 
     //******************************************************************************
@@ -180,6 +197,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     //******************************************************************************
+    //LOCATION
+    //******************************************************************************
+
+
+
+    //******************************************************************************
     //GOOGLE MAPS
     //******************************************************************************
 
@@ -224,22 +247,64 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     //******************************************************************************
 
     private void init() {
-        mInputSearch.setOnEditorActionListener((v, actionId, event) -> {
-            if(actionId == EditorInfo.IME_ACTION_SEARCH
-            || actionId == EditorInfo.IME_ACTION_DONE
-            || event.getAction() == KeyEvent.ACTION_DOWN
-            || event.getAction() == KeyEvent.KEYCODE_ENTER){
-                //execute our method for searching
-                EventBus.getDefault().post(new RefreshEvent(mInputSearch.getText().toString()));
+        //see when the text change
+        mInputSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {  }
 
-                this.hideSoftKeyboard(MainActivity.this);
-                mRelativeLayoutSearch.setVisibility(View.GONE);
-                mInputSearch.setText("");
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                setupAutocomplete();
+                mInputSearch.setAdapter(new ArrayAdapter<>(MainActivity.this, android.R.layout.simple_list_item_1, predictionsArray));
             }
-            return false;
+
+            @Override
+            public void afterTextChanged(Editable s) {  }
         });
 
-        this.hideSoftKeyboard(this);
+        //set click listener when user clicks in an item in the dropdown list
+        mInputSearch.setOnItemClickListener((parent, view, position, id) -> {
+            EventBus.getDefault().post(new RefreshEvent(mInputSearch.getText().toString()));
+
+            hideSoftKeyboard(MainActivity.this);
+            mRelativeLayoutSearch.setVisibility(View.GONE);
+            mInputSearch.setText("");
+            predictionsArray.clear();
+        });
+    }
+
+    private void setupAutocomplete(){
+        AutocompleteSessionToken token = AutocompleteSessionToken.newInstance();
+        // Create a RectangularBounds object.
+        RectangularBounds bounds = RectangularBounds.newInstance(
+                new LatLng(-33.880490, 151.184363),
+                new LatLng(-33.858754, 151.229596));
+        // Use the builder to create a FindAutocompletePredictionsRequest.
+        FindAutocompletePredictionsRequest request = FindAutocompletePredictionsRequest.builder()
+        // Call either setLocationBias() OR setLocationRestriction().
+                .setLocationBias(bounds)
+                //.setLocationRestriction(bounds)
+                .setCountry("fr")
+                .setTypeFilter(TypeFilter.CITIES)
+                .setSessionToken(token)
+                .setQuery(mInputSearch.getText().toString())
+                .build();
+
+        mPlacesClient.findAutocompletePredictions(request).addOnSuccessListener((response) -> {
+            for (AutocompletePrediction prediction : response.getAutocompletePredictions()) {
+                Log.i(TAG, prediction.getPlaceId());
+                Log.i(TAG, prediction.getPrimaryText(null).toString());
+                //test if the prediction isn't present in the list
+                if(!predictionsArray.contains(prediction.getPrimaryText(null).toString())){
+                    predictionsArray.add(prediction.getPrimaryText(null).toString());
+                }
+            }
+        }).addOnFailureListener((exception) -> {
+            if (exception instanceof ApiException) {
+                ApiException apiException = (ApiException) exception;
+                Log.e(TAG, "Place not found: " + apiException.getStatusCode());
+            }
+        });
     }
 
     private void hideSoftKeyboard(Activity activity) {
@@ -251,5 +316,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             view = new View(activity);
         }
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
     }
 }

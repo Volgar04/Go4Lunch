@@ -8,6 +8,7 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
+        resValue "string", "places_api_key", (project.findProperty("PLACES_API_KEY") ?: "AIzaSyBt0QsJpE5plpkqOMYTFQrI3Ilw2VkvX9A")
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
         compileOptions {
@@ -42,9 +43,15 @@ dependencies {
     implementation 'com.firebaseui:firebase-ui-auth:4.3.1'
 
     //GOOGLE
-    implementation 'com.google.android.gms:play-services-location:16.0.0'
-    implementation "com.google.android.gms:play-services-places:16.0.0"
+    //implementation 'com.google.android.gms:play-services-location:16.0.0'
+    //implementation "com.google.android.gms:play-services-maps:16.1.0"
+    //implementation "com.google.android.gms:play-services-places:11.4.2"
+    implementation 'com.google.android.libraries.places:places:1.1.0'
     implementation "com.google.android.gms:play-services-maps:16.1.0"
+    implementation "com.google.android.gms:play-services-auth:16.0.1"
+    implementation "com.google.android.gms:play-services-location:16.0.0"
+    //implementation "com.google.android.gms:play-services-places:16.1.0"
+
 
     //FACEBOOK SIGN IN
     implementation 'com.facebook.android:facebook-android-sdk:[4,5)'

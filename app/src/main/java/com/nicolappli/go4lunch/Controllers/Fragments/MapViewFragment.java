@@ -15,7 +15,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
+
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -23,7 +25,6 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Task;
 import com.nicolappli.go4lunch.R;
@@ -35,8 +36,10 @@ import org.greenrobot.eventbus.Subscribe;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 
 /**
@@ -51,6 +54,9 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
     public static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     public static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
     public static final float DEFAULT_ZOOM = 17f;
+
+    //widgets
+    RelativeLayout mRelativeLayoutGps;
 
     //vars
     public Boolean mLocationPermissionGranted = false;
@@ -71,7 +77,11 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_map_view, container, false);
 
+        mRelativeLayoutGps = view.findViewById(R.id.relative_layout_gps);
+
         this.getLocationPermission();
+
+        mRelativeLayoutGps.setOnClickListener(v -> getDeviceLocation());
 
         return view;
     }
@@ -108,7 +118,7 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
         Log.d(TAG, "moveCamera: moving the camera to lat: " + latLng.latitude + ", lng: " + latLng.longitude);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom));
 
-        if (!title.equals("My Location")){
+        if (!title.equals("My Location")) {
             MarkerOptions options = new MarkerOptions()
                     .position(latLng)
                     .title(title);
@@ -119,8 +129,7 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
     private void initMap() {
         Log.d(TAG, "initMap: initializing map");
 
-        //assert mapFragment != null;
-        if(mapFragment==null){
+        if (mapFragment == null) {
             mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
             if (mapFragment != null) {
                 mapFragment.getMapAsync(MapViewFragment.this);
@@ -129,18 +138,18 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    private void geoLocate(String query){
+    private void geoLocate(String query) {
         Log.d(TAG, "geoLocate: geolocating");
 
         Geocoder geocoder = new Geocoder(getActivity());
         List<Address> list = new ArrayList<>();
-        try{
+        try {
             list = geocoder.getFromLocationName(query, 1);
-        }catch (IOException e){
+        } catch (IOException e) {
             Log.e(TAG, "geoLocate: IOException: " + e.getMessage());
         }
 
-        if(list.size() > 0 ){
+        if (list.size() > 0) {
             Address address = list.get(0);
             //Toast.makeText(getActivity(), address.toString(), Toast.LENGTH_SHORT).show();
             Log.d(TAG, "geoLocate: found a location: " + address.toString());
@@ -213,7 +222,7 @@ public class MapViewFragment extends Fragment implements OnMapReadyCallback {
     }
 
     @Subscribe
-    public void onEvent(RefreshEvent event){
+    public void onEvent(RefreshEvent event) {
         this.geoLocate(event.getQuery());
     }
 
